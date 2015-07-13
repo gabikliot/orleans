@@ -28,5 +28,16 @@ namespace Orleans
     internal interface IInvokable
     {
         IGrainMethodInvoker GetInvoker(int interfaceId, string genericGrainType = null);
+        bool TryAddExtension(IGrainExtensionMethodInvoker invoker, IGrainExtension extension);
+        void RemoveExtension(IGrainExtension extension);
+        bool TryGetExtensionHandler(Type extensionType, out IGrainExtension result);
+    }
+
+    // Runtime component that supports using streams from within it (SystemTarget and ActivationData)
+    internal interface IStreamable
+    {
+        Streams.StreamDirectory GetStreamDirectory();
+        bool IsUsingStreams { get; }
+        Task DeactivateStreamResources();
     }
 }

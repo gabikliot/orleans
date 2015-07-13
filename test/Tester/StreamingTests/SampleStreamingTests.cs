@@ -35,14 +35,14 @@ namespace UnitTests.StreamingTests
 
         private Guid streamId;
         private string streamProvider;
-        
+
         private string deploymentId;
 
         public SampleStreamingTests(SampleStreamingTestsFixture fixture)
         {
             deploymentId = fixture.HostedCluster.DeploymentId;
         }
-        
+
         public void Dispose()
         {
             if (streamProvider != null && streamProvider.Equals(StreamTestsConstants.AZURE_QUEUE_STREAM_PROVIDER_NAME))
@@ -138,7 +138,7 @@ namespace UnitTests.StreamingTests
             await TestingUtils.WaitUntilAsync(lastTry => CheckCounters(producer, consumer, lastTry), _timeout);
 
             await consumer.StopConsuming();
-        }
+            }
 
         private async Task StreamingTests_Producer_Consumer(Guid streamId, string streamProvider)
         {

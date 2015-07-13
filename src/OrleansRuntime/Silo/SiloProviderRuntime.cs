@@ -68,7 +68,7 @@ namespace Orleans.Runtime.Providers
 
         public StreamDirectory GetStreamDirectory()
         {
-            var currentActivation = GetCurrentActivationData();
+            var currentActivation = GetCurrentExecutingEntity<IStreamable>();
             return currentActivation.GetStreamDirectory();
         }
 
@@ -77,10 +77,13 @@ namespace Orleans.Runtime.Providers
             return TraceLogger.GetLogger(loggerName, TraceLogger.LoggerType.Provider);
         }
 
-        public string ExecutingEntityIdentity()
+        public string ExecutingEntityName()
         {
-            var currentActivation = GetCurrentActivationData();
-            return currentActivation.Address.ToString();
+            var context = RuntimeContext.Current.ActivationContext as SchedulingContext;
+            if (context == null)
+                throw new InvalidOperationException("Attempting to GetCurrentActivationData when not in an activation or system target scope");
+
+            return context.Name;
         }
 
         public SiloAddress ExecutingSiloAddress { get { return Silo.CurrentSilo.SiloAddress; } }
@@ -107,7 +110,7 @@ namespace Orleans.Runtime.Providers
                     return implictPubSub;
                 default:
                     return null;
-            }
+        }
         }
 
         public IConsistentRingProviderForGrains GetConsistentRingProvider(int mySubRangeIndex, int numSubRanges)
@@ -129,9 +132,22 @@ namespace Orleans.Runtime.Providers
                     throw new OrleansException("Failed to register " + typeof(TExtension).Name);
             }
 
-            IAddressable currentGrain = RuntimeClient.Current.CurrentActivationData.GrainInstance;
-            var currentTypedGrain = currentGrain.AsReference<TExtensionInterface>();
+            IAddressable currentGrain;
 
+            if (RuntimeContext.Current == null) throw new InvalidOperationException("Attempting to BindExtension when not in an activation or system target scope");
+            var context = RuntimeContext.Current.ActivationContext as SchedulingContext;
+            if (context.ContextType.Equals(SchedulingContextType.Activation))
+            {
+                currentGrain = context.Activation.GrainInstance;
+            }
+            else if (context.ContextType.Equals(SchedulingContextType.SystemTarget))
+            {
+                currentGrain = context.SystemTarget;
+            }
+            else
+                throw new InvalidOperationException("Attempting to BindExtension when not in an activation or system target scope");
+
+            var currentTypedGrain = currentGrain.AsReference<TExtensionInterface>();
             return Task.FromResult(Tuple.Create(extension, currentTypedGrain));
         }
 
@@ -143,7 +159,7 @@ namespace Orleans.Runtime.Providers
         /// <returns></returns>
         internal bool TryAddExtension(IGrainExtension handler)
         {
-            var currentActivation = GetCurrentActivationData();
+            var currentActivation = GetCurrentExecutingEntity<IInvokable>();
             var invoker = TryGetExtensionInvoker(handler.GetType());
             if (invoker == null)
                 throw new SystemException("Extension method invoker was not generated for an extension interface");
@@ -151,14 +167,27 @@ namespace Orleans.Runtime.Providers
             return currentActivation.TryAddExtension(invoker, handler);
         }
 
-        private static ActivationData GetCurrentActivationData()
+        private static T GetCurrentExecutingEntity<T>() where T : class
         {
-            var context = RuntimeContext.Current.ActivationContext as SchedulingContext;
-            if (context == null || context.Activation == null)
-                throw new InvalidOperationException("Attempting to GetCurrentActivationData when not in an activation scope");
+            var context = RuntimeContext.Current != null ? RuntimeContext.Current.ActivationContext as SchedulingContext : null;
+
+            if (context == null)
+                throw new InvalidOperationException("Attempting to GetCurrentActivationData when not in an activation or system target scope");
+
+            if (context.ContextType.Equals(SchedulingContextType.Activation))
+        {
+                return context.Activation as T;
+            }
+            if (context.ContextType.Equals(SchedulingContextType.SystemTarget))
+            {
+                return context.SystemTarget as T;
+            }
+            throw new InvalidOperationException("Attempting to GetCurrentActivationData when not in an activation or system target scope");
+        }
             
-            var currentActivation = context.Activation;
-            return currentActivation;
+        public ISchedulingContext GetCurrentSchedulingContext()
+        {
+            return RuntimeContext.Current != null ? RuntimeContext.Current.ActivationContext as SchedulingContext : null;
         }
 
         /// <summary>
@@ -169,13 +198,13 @@ namespace Orleans.Runtime.Providers
         /// <param name="handler"></param>
         internal void RemoveExtension(IGrainExtension handler)
         {
-            var currentActivation = GetCurrentActivationData();
+            var currentActivation = GetCurrentExecutingEntity<IInvokable>();
             currentActivation.RemoveExtension(handler);
         }
 
         internal bool TryGetExtensionHandler<TExtension>(out TExtension result)
         {
-            var currentActivation = GetCurrentActivationData();
+            var currentActivation = GetCurrentExecutingEntity<IInvokable>();
             IGrainExtension untypedResult;
             if (currentActivation.TryGetExtensionHandler(typeof(TExtension), out untypedResult))
             {
@@ -198,7 +227,20 @@ namespace Orleans.Runtime.Providers
             if (invoker != null)
                 return (IGrainExtensionMethodInvoker) invoker;
             
-            throw new ArgumentException("Provider extension handler type " + handlerType + " was not found in the type manager", "handler");
+            throw new ArgumentException("Provider extension handler type " + handlerType + " was not found in the type manager", "handlerType");
+        }
+        
+        public Task InvokeWithinSchedulingContextAsync(Func<Task> asyncFunc, object context)
+        {
+            if (null == asyncFunc)
+                throw new ArgumentNullException("asyncFunc");
+            if (null == context)
+                throw new ArgumentNullException("context");
+            if (!(context is ISchedulingContext))
+                throw new ArgumentException("context object is not of a ISchedulingContext type.", "context");
+
+            // copied from InsideRuntimeClient.ExecAsync().
+            return OrleansTaskScheduler.Instance.RunOrQueueTask(asyncFunc, (ISchedulingContext) context);
         }
 
         public object GetCurrentSchedulingContext()

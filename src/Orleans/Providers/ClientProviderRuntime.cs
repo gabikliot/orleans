@@ -8,7 +8,7 @@ using Orleans.Runtime;
 namespace Orleans.Providers
 {
     internal class ClientProviderRuntime : IStreamProviderRuntime
-    {
+    { 
         private IStreamPubSub grainBasedPubSub;
         private IStreamPubSub implictPubSub;
         private IStreamPubSub combinedGrainBasedAndImplicitPubSub;
@@ -81,7 +81,7 @@ namespace Orleans.Providers
             }
         }
 
-        public string ExecutingEntityIdentity()
+        public string ExecutingEntityName()
         {
             return RuntimeClient.Current.Identity;
         }
@@ -165,7 +165,14 @@ namespace Orleans.Providers
 
         public bool InSilo { get { return false; } }
 
-        public object GetCurrentSchedulingContext()
+        public Task InvokeWithinSchedulingContextAsync(Func<Task> asyncFunc, object context)
+        {
+            if (context != null)
+                throw new ArgumentException("The grain client only supports a null scheduling context.");
+            return Task.Run(asyncFunc);
+        }
+
+        public ISchedulingContext GetCurrentSchedulingContext()
         {
             return null;
         }

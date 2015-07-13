@@ -34,12 +34,11 @@ namespace Orleans.Runtime
             await pluginManager.LoadAndInitPluginProviders(configCategoryName, configs);
         }
 
-
         public Task CloseProviders()
         {
             List<Task> tasks = new List<Task>();
             foreach (var provider in GetProviders())
-            {
+        {
                 tasks.Add(provider.Close());
             }
             return Task.WhenAll(tasks);
@@ -66,7 +65,7 @@ namespace Orleans.Runtime
             }
 
             internal async Task LoadAndInitPluginProviders(
-                string configCategoryName, IDictionary<string, ProviderCategoryConfiguration> configs)
+                string configCategoryName, IDictionary<string, ProviderCategoryConfiguration> configs, IStreamProviderManager streamProviderManager)
             {
                 ProviderCategoryConfiguration categoryConfig;
                 if (!configs.TryGetValue(configCategoryName, out categoryConfig)) return;
@@ -74,6 +73,8 @@ namespace Orleans.Runtime
                 var providers = categoryConfig.Providers;
                 providerLoader.LoadProviders(providers, this);
                 logger.Info(ErrorCode.SiloCallingProviderInit, "Calling Init for {0} classes", typeof(T).Name);
+
+                providerLoader.InjectStreamProviderManagerToBootstrapProvider(streamProviderManager); 
 
                 // Await here to force any errors to show this method name in stack trace, for better diagnostics
                 await providerLoader.InitProviders(SiloProviderRuntime.Instance);

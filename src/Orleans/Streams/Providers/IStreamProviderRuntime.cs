@@ -17,7 +17,7 @@ namespace Orleans.Streams
         /// Just for logging purposes.
         /// </summary>
         /// <param name="handler"></param>
-        string ExecutingEntityIdentity();
+        string ExecutingEntityName();
 
         SiloAddress ExecutingSiloAddress { get; }
 
@@ -57,8 +57,13 @@ namespace Orleans.Streams
         /// <returns></returns>
         bool InSilo { get; }
 
-        object GetCurrentSchedulingContext();
-    }
+        /// <summary>
+        /// Invoke the given async function from within a valid Orleans scheduler context.
+        /// </summary>
+        /// <param name="asyncFunc"></param>
+        Task InvokeWithinSchedulingContextAsync(Func<Task> asyncFunc, object context);
+
+        ISchedulingContext GetCurrentSchedulingContext();
 
         /// <summary>
     /// Provider-facing interface for manager of streaming providers
@@ -168,10 +173,10 @@ namespace Orleans.Streams
             else
                 SiloMaturityPeriod = ConfigUtilities.ParseTimeSpan(immaturityPeriod,
                     "Invalid time value for the " + SILO_MATURITY_PERIOD + " property in the provider config values.");
-        }
+    }
 
         public override string ToString()
-        {
+    {
             return String.Format("{0}={1}, {2}={3}, {4}={5}, {6}={7}, {8}={9}, {10}={11}, {12}={13}",
                 GET_QUEUE_MESSAGES_TIMER_PERIOD, GetQueueMsgsTimerPeriod,
                 INIT_QUEUE_TIMEOUT, InitQueueTimeout,

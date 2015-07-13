@@ -7,6 +7,7 @@ using System.Xml;
 using System.Threading.Tasks;
 using Orleans.Runtime;
 using Orleans.Runtime.Configuration;
+using Orleans.Streams;
 
 namespace Orleans.Providers
 {
@@ -76,8 +77,7 @@ namespace Orleans.Providers
                 throw new OrleansException(msg);
             }
         }
-
-
+        
         public async Task InitProviders(IProviderRuntime providerRuntime)
         {
             Dictionary<string, TProvider> copy; 

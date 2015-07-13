@@ -678,6 +678,10 @@ namespace Orleans.TestingHost
             {
                 config.Globals.DataConnectionString = options.DataConnectionString;
             }
+            if (!String.IsNullOrEmpty(options.BootstrapProviderType))
+            {
+                config.Globals.RegisterBootstrapProvider(options.BootstrapProviderType, "TestBootstraper");
+            }
 
             host.Globals = config.Globals;
 

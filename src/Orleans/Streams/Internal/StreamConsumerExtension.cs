@@ -54,7 +54,7 @@ namespace Orleans.Streams
             }
             catch (Exception exc)
             {
-                logger.Error((int)ErrorCode.StreamProvider_AddObserverException, String.Format("{0} StreamConsumerExtension.AddObserver({1}) caugth exception.",
+                logger.Error((int)ErrorCode.StreamProvider_AddObserverException, String.Format("{0} StreamConsumerExtension.AddObserver({1}) caugth exception.", 
                     providerRuntime.ExecutingEntityIdentity(), stream.StreamId), exc);
                 throw;
             }
@@ -75,7 +75,7 @@ namespace Orleans.Streams
                 return observer.DeliverItem(item.Value, currentToken, handshakeToken);
 
             logger.Warn((int)(ErrorCode.StreamProvider_NoStreamForItem), "{0} got an item for subscription {1}, but I don't have any subscriber for that stream. Dropping on the floor.",
-                providerRuntime.ExecutingEntityIdentity(), subscriptionId);
+                providerRuntime.ExecutingEntityName(), subscriptionId);
             // We got an item when we don't think we're the subscriber. This is a normal race condition.
             // We can drop the item on the floor, or pass it to the rendezvous, or ...
             return Task.FromResult(default(StreamHandshakeToken));
@@ -90,7 +90,7 @@ namespace Orleans.Streams
                 return observer.DeliverBatch(batch.Value, handshakeToken);
 
             logger.Warn((int)(ErrorCode.StreamProvider_NoStreamForBatch), "{0} got an item for subscription {1}, but I don't have any subscriber for that stream. Dropping on the floor.",
-                providerRuntime.ExecutingEntityIdentity(), subscriptionId);
+                providerRuntime.ExecutingEntityName(), subscriptionId);
             // We got an item when we don't think we're the subscriber. This is a normal race condition.
             // We can drop the item on the floor, or pass it to the rendezvous, or ...
             return Task.FromResult(default(StreamHandshakeToken));
@@ -105,7 +105,7 @@ namespace Orleans.Streams
                 return observer.CompleteStream();
 
             logger.Warn((int)(ErrorCode.StreamProvider_NoStreamForItem), "{0} got a Complete for subscription {1}, but I don't have any subscriber for that stream. Dropping on the floor.",
-                providerRuntime.ExecutingEntityIdentity(), subscriptionId);
+                providerRuntime.ExecutingEntityName(), subscriptionId);
             // We got an item when we don't think we're the subscriber. This is a normal race condition.
             // We can drop the item on the floor, or pass it to the rendezvous, or ...
             return TaskDone.Done;
@@ -120,7 +120,7 @@ namespace Orleans.Streams
                 return observer.ErrorInStream(exc);
 
             logger.Warn((int)(ErrorCode.StreamProvider_NoStreamForItem), "{0} got an Error for subscription {1}, but I don't have any subscriber for that stream. Dropping on the floor.",
-                providerRuntime.ExecutingEntityIdentity(), subscriptionId);
+                providerRuntime.ExecutingEntityName(), subscriptionId);
             // We got an item when we don't think we're the subscriber. This is a normal race condition.
             // We can drop the item on the floor, or pass it to the rendezvous, or ...
             return TaskDone.Done;
