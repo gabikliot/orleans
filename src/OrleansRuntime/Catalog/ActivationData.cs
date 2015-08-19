@@ -259,7 +259,7 @@ namespace Orleans.Runtime
                 bool doNotCollect = typeof(IReminderTable).IsAssignableFrom(GrainInstanceType) || typeof(IMemoryStorageGrain).IsAssignableFrom(GrainInstanceType);
                 if (doNotCollect)
                 {
-                    this.collector = null;
+                    collector = null;
                 }
             }
         }
@@ -417,8 +417,13 @@ namespace Orleans.Runtime
 
             // This logic only works for non-reentrant activations
             // Consider: Handle long request detection for reentrant activations.
-            Running = message;
-            currentRequestStartTime = DateTime.UtcNow;
+            if (!message.IsAlwaysInterleave)
+            {
+                // for non-reentrant activation we only record the non-reentrant message. We don't record AlwaysInterleave message.
+                // for reentrant activation we record the first reentrant message.
+                Running = message;
+                currentRequestStartTime = DateTime.UtcNow;
+            }
         }
 
         public void ResetRunning(Message message)
@@ -491,7 +496,7 @@ namespace Orleans.Runtime
                 if (State == ActivationState.Invalid)
                 {
                     logger.Warn(ErrorCode.Dispatcher_InvalidActivation,
-                        "Cannot enqueue message to invalid activation {0} : {1}", this.ToDetailedString(), message);
+                        "Cannot enqueue message to invalid activation {0} : {1}", ToDetailedString(), message);
                     return false;
                 }
                 // If maxRequestProcessingTime is never set, then we will skip this check
@@ -503,7 +508,7 @@ namespace Orleans.Runtime
                     {
                         logger.Warn(ErrorCode.Dispatcher_ExtendedMessageProcessing,
                              "Current request has been active for {0} for activation {1}. Currently executing {2}. Trying  to enqueue {3}.",
-                             currentRequestActiveTime, this.ToDetailedString(), Running, message);
+                             currentRequestActiveTime, ToDetailedString(), Running, message);
                     }
                 }
 
@@ -536,7 +541,7 @@ namespace Orleans.Runtime
                     String.Format("Overload - {0} enqueued requests for activation {1}, exceeding hard limit rejection threshold of {2}",
                         count, this, maxRequestsHardLimit));
 
-                return new LimitExceededException(limitValue.Name, count, maxRequestsHardLimit, this.ToString());
+                return new LimitExceededException(limitValue.Name, count, maxRequestsHardLimit, ToString());
             }
             if (maxRequestsSoftLimit > 0 && count > maxRequestsSoftLimit) // Soft limit
             {
